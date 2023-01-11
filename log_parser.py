@@ -1,20 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-from pathlib import Path
-
-path = Path("./data/detections023 2.txt")
-
-print(path.is_file())
-
-filename = path.stem
-suffix = path.suffix
-dir = path.parent
-
-print(filename)
-print(suffix)
-print(dir)
-
 # In[546]:
 
 
@@ -25,13 +11,14 @@ print('[INFO] numpy version:', np.version.full_version)
 print('[INFO] pandas version:', pd.__version__)
 
 
-# In[544]:
+# In[548]:
 
 
 # Settings
 pd.set_option('display.max_columns', None)
 
-# In[483]:
+
+# In[588]:
 
 
 # import the necessary packages
@@ -39,16 +26,41 @@ import argparse
 
 # construct the argument parser and parse the arguments
 ap = argparse.ArgumentParser()
-ap.add_argument("-f", "--file", type=str, default="./detections023 2.txt", help="path to input file")
-
+ap.add_argument("-f", "--file", type=str, default="./data/detections023 2.txt", help="path to input file")
+ap.add_argument("-o", "--output", type=str, required=False, help="output file (must include full path)")
 
 args = vars(ap.parse_args())
-file_path = args['file']
-
-print(f"[INFO] File: {file_path}")
 
 
-# In[533]:
+# In[589]:
+
+
+def get_input_file_path():
+    print("[INFO] Get input/output parameters")
+    
+    from pathlib import Path
+
+    file_path = args['file']
+    path = Path(file_path)
+
+    if path.is_file() == False:
+        raise Exception("File does not exist!")
+
+    print(f"[INFO] File: {file_path}")
+
+    filename = path.stem
+    suffix = path.suffix
+    dir = path.parent
+
+    return {
+        'full_file_path': file_path,
+        'filename': filename,
+        'suffix': suffix,
+        'path': dir
+    }
+
+
+# In[590]:
 
 
 def format_date_time():
@@ -84,16 +96,21 @@ def split_markers(df):
         
     return df1
 
-def save_to_csv():
-    print('[INFO] Saving CSV')
+def save_to_csv(full_file_path, filename, suffix, path):
     
+    output = args['output']
+    if(output is None):
+        output = f'{path}/{filename}.csv'
+
+    print('[INFO] Saving CSV in', output)
+
     selected_columns = df.columns.to_series().filter(regex='^(?!Field).*$')
 
-    df[selected_columns].to_csv('./sample.csv')    
+    df[selected_columns].to_csv(output)    
         
 
 
-# In[534]:
+# In[592]:
 
 
 try:
@@ -102,13 +119,15 @@ try:
     fields = ["Analyzer-Instance", "Field-2", "Date", "Time", "Field-5", "Field-6", "Field-7", "Field-8",
               "Field-9", "Field-10", "Field-11", "Field-12", "Field-13", "Field-14", "JobId", 
               "Markers", "Field-17", "Field-18"]
-
-    df = pd.read_csv(file_path, sep='\s+', header=None, index_col=None, names=fields)
+    
+    input_file_path = get_input_file_path()
+    
+    df = pd.read_csv(input_file_path['full_file_path'], sep='\s+', header=None, index_col=None, names=fields)
 
     # Format fields
     format_date_time()
     formar_local_manager()    
     df = split_markers(df)
-    save_to_csv()
+    save_to_csv(**input_file_path)
 except Exception as inst:
     print("[ERROR]", inst)
